@@ -60,8 +60,8 @@ async def main() -> None:
 
     logger = AiLogger(unit, modbus_ids=[3, 4], meter=True)
 
-    await logger.async_read_info()   # static identity, once at setup
-    await logger.async_update()      # measurements, every poll
+    await logger.async_read_info()  # static identity, once at setup
+    await logger.async_update()  # measurements, every poll
 
     for inverter in logger.inverters:
         print(inverter.info.serial_number, inverter.info.machine_type)
@@ -121,7 +121,7 @@ against a unit bound to that address:
 ```python
 from solplanet_modbus import Inverter
 
-inverter = Inverter(connection.for_unit(3))   # method 2: unit ID = RS485 address
+inverter = Inverter(connection.for_unit(3))  # method 2: unit ID = RS485 address
 await inverter.async_update_info()
 await inverter.async_update()
 ```
@@ -136,8 +136,8 @@ The control registers are **write-only**, and a write applies to *every* inverte
 the logger manages — there is no per-inverter control register.
 
 ```python
-await logger.controls.async_set_active_power_limit(80)   # cap at 80 % of rated
-await logger.controls.async_set_power_factor(0.95)       # leading
+await logger.controls.async_set_active_power_limit(80)  # cap at 80 % of rated
+await logger.controls.async_set_power_factor(0.95)  # leading
 await logger.controls.async_turn_off()
 ```
 
