@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly run so a new modbus-connection release that breaks the supported
+    # range surfaces on its own schedule, not on the next unrelated push.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - name: Ruff format
+        run: uvx ruff format --check .
+      - name: Ruff lint
+        run: uvx ruff check .
+
+  types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - name: Install dependencies
+        run: uv sync
+      - name: Mypy
+        run: uv run --no-sync mypy src tests script/query.py
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The library declares modbus-connection>=4.1, so verify both ends of
+        # that range — consumers (e.g. Home Assistant) resolve their own version.
+        include:
+          - name: floor
+            override: "--with modbus-connection==4.1.0"
+          - name: latest
+            override: ""
+    name: test (modbus-connection ${{ matrix.name }})
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - name: Install dependencies
+        run: uv sync
+      - name: Run tests
+        run: >-
+          uv run --no-sync ${{ matrix.override }}
+          pytest --cov=solplanet_modbus --cov=script --cov-branch --cov-fail-under=100

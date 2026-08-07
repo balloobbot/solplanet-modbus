@@ -1,0 +1,34 @@
+name-template: "$RESOLVED_VERSION"
+tag-template: "$RESOLVED_VERSION"
+
+categories:
+  - title: "⚠️ Breaking changes"
+    labels: ["breaking-change", "major"]
+    semver-increment: "major"
+  - title: "✨ New features"
+    labels: ["enhancement", "new-feature", "minor"]
+    semver-increment: "minor"
+  - title: "🐛 Bug fixes"
+    labels: ["bugfix", "bug", "patch"]
+    semver-increment: "patch"
+  - title: "⬆️ Dependencies"
+    labels: ["dependencies"]
+    semver-increment: "patch"
+
+version-resolver:
+  default: patch
+
+change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
+change-title-escapes: '\<*_&'
+
+# The warning block is stripped by the workflow once the release assets are
+# uploaded; its presence means the draft is not ready to publish yet.
+template: |
+  <!-- upload-warning-start -->
+  > [!WARNING]
+  > Release assets are still being uploaded — **do not publish this draft yet**.
+  > This warning disappears automatically once the assets are attached.
+  <!-- upload-warning-end -->
+  ## What's changed
+
+  $CHANGES

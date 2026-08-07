@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "solplanet-modbus"
+version = "0.1.0"
+description = "Read Solplanet (AISWEI) Ai-Logger data loggers over Modbus TCP."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Paulus Schoutsen" }]
+keywords = ["modbus", "solplanet", "aiswei", "ai-logger", "solar", "home-assistant"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Home Automation",
+]
+# Protocol + the device-modelling framework (modbus_connection.model). The caller
+# injects a ModbusUnit built from whichever backend they choose.
+dependencies = ["modbus-connection>=4.1"]
+
+[project.optional-dependencies]
+# Concrete backend for the script/query.py CLI (pip install solplanet-modbus[cli]).
+cli = ["modbus-connection[pymodbus]>=4.1"]
+
+[project.urls]
+Homepage = "https://github.com/balloobbot/solplanet-modbus"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.14",
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5",
+    # Tests run against the in-memory mock backend that ships with
+    # modbus-connection (its pytest plugin is auto-registered); no real backend
+    # or server is needed. The pymodbus extra is only imported (never connected)
+    # to exercise the query CLI's backend selection.
+    "modbus-connection[pymodbus]>=4.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/solplanet_modbus"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.coverage.report]
+exclude_also = ["if __name__ == .__main__.:"]
+
+[tool.ruff]
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]

@@ -1,0 +1,115 @@
+name: Release Drafter
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-drafter
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Draft release
+        id: drafter
+        uses: release-drafter/release-drafter@4d75298e00d9e34c483e5ff8c68d0ea1c1940c1e # v7.5.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Determine release version
+        id: version
+        env:
+          RESOLVED: ${{ steps.drafter.outputs.resolved_version }}
+        # Before the first published release the drafter has no baseline and
+        # resolves 0.0.1; pyproject.toml acts as the version floor so the
+        # version can never go backwards.
+        run: |
+          current=$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml)
+          if [ -z "$current" ]; then
+            echo "::error::Could not read the version from pyproject.toml."
+            exit 1
+          fi
+          target=$(printf '%s\n%s\n' "$current" "$RESOLVED" | sort -V | tail -1)
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+      - name: Align draft release with the version floor
+        if: steps.version.outputs.target != steps.drafter.outputs.resolved_version
+        uses: release-drafter/release-drafter@4d75298e00d9e34c483e5ff8c68d0ea1c1940c1e # v7.5.1
+        with:
+          version: ${{ steps.version.outputs.target }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - name: Bump pyproject.toml to the drafted version
+        env:
+          VERSION: ${{ steps.version.outputs.target }}
+        run: |
+          sed -i "s/^version = \".*\"$/version = \"${VERSION}\"/" pyproject.toml
+          if ! git diff --quiet pyproject.toml; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Bump version to ${VERSION}" pyproject.toml
+            git push
+          fi
+      - name: Build distributions
+        run: uv build
+      - name: Delete stale assets from the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ steps.drafter.outputs.id }}
+        # A version bump renames the distributions, so uploads would not
+        # clobber the previous files — clear the draft first.
+        run: |
+          if ! asset_ids=$(gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" --jq '.[].id'); then
+            echo "::error::Could not list draft release assets."
+            exit 1
+          fi
+          if [ -n "$asset_ids" ]; then
+            while IFS= read -r asset_id; do
+              gh api -X DELETE "/repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
+            done <<< "$asset_ids"
+          fi
+      - name: Upload distributions to the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.target }}
+        run: gh release upload "$TAG" dist/*
+      - name: Mark draft ready by removing the upload warning
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ steps.drafter.outputs.id }}
+          TAG: ${{ steps.version.outputs.target }}
+        run: |
+          if ! body=$(gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" --jq .body); then
+            echo "::error::Could not read the draft release body."
+            exit 1
+          fi
+          new_body=$(printf '%s' "$body" | python3 -c '
+          import re
+          import sys
+
+          body = sys.stdin.read()
+          ready = re.sub(
+              r"<!-- upload-warning-start -->.*?<!-- upload-warning-end -->\s*",
+              "",
+              body,
+              flags=re.S,
+          )
+          sys.stdout.write(ready)
+          ')
+          gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+            --method PATCH \
+            --field "body=${new_body}" \
+            --field "tag_name=${TAG}" \
+            --field "name=${TAG}" \
+            --field "draft=true" \
+            --silent
