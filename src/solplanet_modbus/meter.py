@@ -9,9 +9,9 @@ without a meter can drop it and keep them.
 
 from __future__ import annotations
 
-from modbus_connection.model import float32, int32
+from modbus_connection.model import float32
 
-from .model import SolplanetComponent
+from .model import SolplanetComponent, int32
 
 
 class SystemPower(SolplanetComponent):

@@ -18,6 +18,13 @@ RS485 ports over Modbus RTU and republishes all of their data in one flat
 input-register map, so a client talks only to the logger — never to an inverter
 directly.
 
+If you have a single inverter with its own WiFi dongle rather than a logger, you
+probably want [zbigniewmotyka/home-assistant-solplanet](https://github.com/zbigniewmotyka/home-assistant-solplanet)
+instead, which reads the dongle's JSON API directly. This library exists for the
+Ai-Logger's Modbus TCP interface, which that integration does not cover — but it
+is where the error codes and unimplemented-value sentinels here come from, since
+none of that is in the protocol document.
+
 ## Design
 
 - It **consumes the connection abstraction**, not a backend: the API takes a
@@ -65,7 +72,7 @@ async def main() -> None:
 
     for inverter in logger.inverters:
         print(inverter.info.serial_number, inverter.info.machine_type)
-        print(" state:", inverter.data.state)
+        print(" state:", inverter.data.state, inverter.data.error_description)
         print(" power:", inverter.data.active_power, "W")
         print(" today:", inverter.data.energy_today, "kWh")
         print(" PV:", inverter.data.pv_voltages[:2], inverter.data.pv_currents[:2])
@@ -160,12 +167,49 @@ Things worth knowing before pointing this at a real logger:
 - **Port 9999 by default**, changeable to 502 or any port in 1024–20000 from the
   web interface (System settings → Communication settings → Network settings).
 
-Two things the document promises but does not deliver, and which therefore stay
-raw integers here: the **grid code** table (register 1026, "section 3.5") and the
-**error and warning code** tables (registers 1377 and 1378, "section 3.4").
-Neither section exists in the released V03 manual. Two printed addresses are also
-typos, corrected in this library: PV7 voltage as `31330` (it is 1330) and the
-slave CPU sub-version range as `1103~1015` (it is 1103–1105).
+### Gaps and errata in UM0058
+
+The document promises three code tables it does not contain: the **grid code**
+(register 1026, "section 3.5") and the **error and warning codes** (registers
+1377 and 1378, "section 3.4"). Neither section exists in the released V03 manual.
+
+The error codes are filled in anyway — see *Where the undocumented parts come
+from* below. The grid code and the warning code stay raw integers.
+
+Two printed addresses are typos, corrected here: PV7 voltage as `31330` (it is
+1330) and the slave CPU sub-version range as `1103~1015` (it is 1103–1105).
+
+The document also never says what an inverter reports for a register it does not
+implement. It is the usual AISWEI convention — all ones for an unsigned type,
+the sign bit alone for a signed one — so every numeric field carries that
+sentinel and decodes it to `None`:
+
+| Type | Unimplemented |
+| --- | --- |
+| U16 / E16 | `0xFFFF` |
+| S16 | `0x8000` |
+| U32 | `0xFFFFFFFF` |
+| S32 | `0x80000000` |
+
+Without this, a single-phase inverter's absent L3 voltage reads as 6553.5 V and a
+missing temperature probe as −3276.8 °C. Note that the sentinel is matched on the
+raw word, so a genuine −1 W stays −1 W.
+
+### Where the undocumented parts come from
+
+The error code table and the sentinel values are transcribed from
+[zbigniewmotyka/home-assistant-solplanet](https://github.com/zbigniewmotyka/home-assistant-solplanet),
+which reads the same inverters through their JSON API and is exercised against
+real hardware. That integration independently confirms every scaling factor this
+library derives from UM0058 — frequency ×0.01, energy ×0.1 kWh, temperature
+×0.1 °C, voltage ×0.1 V, power ×1 — and its inverter status codes match the
+document's exactly.
+
+Two caveats. The error table is the *inverter's* enumeration, reached over a
+different transport; nothing confirms register 1377 uses the same numbering, so
+`error_code` keeps the raw value and `error_description` only ever adds a label.
+And codes that table marks reserved are omitted here, so an unmapped code reads
+as unknown rather than as a meaningless string.
 
 Register 986's wind speed is documented with no gain but a maximum of 6000,
 which only makes sense at a 0.01 scale. It is exposed unscaled as

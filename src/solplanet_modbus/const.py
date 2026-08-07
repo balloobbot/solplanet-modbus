@@ -28,3 +28,16 @@ INVERTER_BASE: Final = 1000
 #: Inverters attached per RS485 port, and the number of ports.
 INVERTERS_PER_PORT: Final = 30
 PORT_COUNT: Final = 3
+
+# UM0058 documents no sentinel for a register an inverter does not implement,
+# but the wider AISWEI Modbus protocol marks one with the all-ones pattern for an
+# unsigned type and the sign bit alone for a signed one. Fields carry these so an
+# unimplemented register decodes to None instead of to 6553.5 V or -3276.8 °C.
+# Taken from the AISWEI RTU codec in zbigniewmotyka/home-assistant-solplanet,
+# which is exercised against real inverters.
+NAN_U16: Final = 0xFFFF
+NAN_S16: Final = 0x8000
+NAN_U32: Final = 0xFFFFFFFF
+NAN_S32: Final = 0x80000000
+#: The same for an ``E16`` number code, which the protocol treats as unsigned.
+NAN_E16: Final = 0xFFFF

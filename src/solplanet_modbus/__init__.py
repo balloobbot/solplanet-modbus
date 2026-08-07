@@ -34,10 +34,16 @@ from .const import (
     INVERTER_BASE,
     INVERTER_BLOCK_SIZE,
     INVERTERS_PER_PORT,
+    NAN_E16,
+    NAN_S16,
+    NAN_S32,
+    NAN_U16,
+    NAN_U32,
     PORT_COUNT,
 )
 from .controls import ACTIVE_POWER_REFRESH_SECONDS, ControlRegisters, InverterControls
 from .enums import DeviceState, FaultState, InverterModel, PhaseType
+from .errors import INVERTER_ERROR_CODES, error_description
 from .exceptions import (
     SolplanetError,
     SolplanetValueValidationError,
@@ -54,6 +60,12 @@ __all__ = [
     "INVERTERS_PER_PORT",
     "INVERTER_BASE",
     "INVERTER_BLOCK_SIZE",
+    "INVERTER_ERROR_CODES",
+    "NAN_E16",
+    "NAN_S16",
+    "NAN_S32",
+    "NAN_U16",
+    "NAN_U32",
     "PORT_COUNT",
     "AiLogger",
     "ComPort",
@@ -78,6 +90,7 @@ __all__ = [
     "WeatherSensor",
     "WeatherStation",
     "all_slots",
+    "error_description",
     "port_of",
     "slot_for",
     "slots_for_port",

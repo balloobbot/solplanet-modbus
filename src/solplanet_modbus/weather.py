@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from modbus_connection.model import gauge, integer, repeating_group
 
+from .const import NAN_S16, NAN_U16
 from .model import SolplanetComponent
 
 #: Registers per weather sensor.
@@ -28,13 +29,13 @@ class WeatherSensor(SolplanetComponent):
     # UM0058 documents no gain here but bounds the raw value at 6000, which only
     # makes sense as a wind speed at a 0.01 scale (0-60 m/s). The value is left
     # unscaled to match the document; divide by 100 if the sensor reads high.
-    wind_speed_raw = integer(986, signed=False, unit="m/s")
-    irradiance = gauge(987, 0.1, signed=False, unit="W/m²")
-    cell_temperature = gauge(988, 0.1, unit="°C")
-    external_temperature_1 = gauge(989, 0.1, unit="°C")
-    external_temperature_2 = gauge(990, 0.1, unit="°C")
-    humidity = integer(991, signed=False, unit="%")
-    wind_direction = integer(992, signed=False, unit="°")
+    wind_speed_raw = integer(986, signed=False, nan=NAN_U16, unit="m/s")
+    irradiance = gauge(987, 0.1, signed=False, nan=NAN_U16, unit="W/m²")
+    cell_temperature = gauge(988, 0.1, nan=NAN_S16, unit="°C")
+    external_temperature_1 = gauge(989, 0.1, nan=NAN_S16, unit="°C")
+    external_temperature_2 = gauge(990, 0.1, nan=NAN_S16, unit="°C")
+    humidity = integer(991, signed=False, nan=NAN_U16, unit="%")
+    wind_direction = integer(992, signed=False, nan=NAN_U16, unit="°")
 
 
 class WeatherStation(SolplanetComponent):
