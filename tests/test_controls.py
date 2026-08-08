@@ -7,7 +7,7 @@ holding store — the input store the data maps read stays untouched.
 from __future__ import annotations
 
 import pytest
-from modbus_connection.mock import MockModbusUnit
+from modbus_connection.mock import MockModbusUnit, WriteEvent
 
 from solplanet_modbus import InverterControls, SolplanetValueValidationError
 
@@ -76,7 +76,12 @@ async def test_controls_write_as_function_code_06(
     controls: InverterControls, mock_modbus_unit: MockModbusUnit
 ) -> None:
     """UM0058 documents only FC06 for these, so writes stay single-register."""
+    events: list[WriteEvent] = []
+    mock_modbus_unit.on_write(events.append)
+
     await controls.async_set_active_power_limit(50)
+
+    assert events == [WriteEvent("holding", 60003, [5000], 0x06)]
     assert mock_modbus_unit.holding == {60003: 5000}
 
 

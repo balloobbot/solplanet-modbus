@@ -89,8 +89,9 @@ asyncio.run(main())
 ### Finding the inverters
 
 `async_discover()` reads each reserved window and keeps the ones that report
-their own RS485 address back. Narrow it to the ports the site uses — a full scan
-is 90 requests:
+their own RS485 address back. A window the logger rejects as an illegal data
+address is skipped rather than abandoning the scan. Narrow it to the ports the
+site uses — a full scan is 90 requests:
 
 ```python
 from solplanet_modbus import AiLogger, ComPort, slots_for_port

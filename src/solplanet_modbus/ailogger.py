@@ -6,6 +6,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from modbus_connection import BlockReadError, ExceptionCode
 from modbus_connection.model import Component, ComponentGroup
 
 from .addressing import InverterSlot, all_slots, slot_for
@@ -120,13 +121,20 @@ class AiLogger:
         per window, so scanning all 90 takes a while — pass ``slots`` to narrow
         it to the ports a site actually uses.
 
-        Raises ``BlockReadError`` if the logger rejects a window's block, which
-        it does for a port that is not scanned at all.
+        A window the logger answers with "illegal data address" is skipped: it
+        does not serve that part of the map, which is the same news as an empty
+        window and should not abandon the rest of the scan. Any other rejection
+        is a real fault and raises ``BlockReadError``.
         """
         found = []
         for slot in all_slots() if slots is None else slots:
             info = InverterInfo(unit, base_offset=slot.base_offset)
-            await info.async_update()
+            try:
+                await info.async_update()
+            except BlockReadError as err:
+                if err.exception_code == ExceptionCode.ILLEGAL_DATA_ADDRESS:
+                    continue
+                raise
             if info.modbus_address != slot.modbus_id:
                 continue
             found.append(

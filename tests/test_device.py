@@ -3,6 +3,12 @@
 from __future__ import annotations
 
 import pytest
+from modbus_connection import (
+    BlockReadError,
+    IllegalDataAddressError,
+    ModbusConnectionError,
+    ServerDeviceFailureError,
+)
 from modbus_connection.mock import MockModbusUnit
 
 from solplanet_modbus import (
@@ -246,6 +252,39 @@ async def test_discover_tolerates_a_window_without_identity_strings(
     found = await AiLogger.async_discover(mock_modbus_unit, [slot_for(3)])
     assert found[0].serial_number == ""
     assert found[0].machine_type == ""
+
+
+async def test_discover_skips_a_window_the_logger_does_not_serve(
+    unit: MockModbusUnit,
+) -> None:
+    """ "Illegal data address" is the same news as an empty window, not a fault."""
+    unit.fail_read(
+        slot_for(4).base_address,
+        IllegalDataAddressError(message="no such window"),
+        register_type="input",
+    )
+    found = await AiLogger.async_discover(unit, slots_for_port(ComPort.COM1))
+    assert [inverter.modbus_id for inverter in found] == [3]
+
+
+async def test_discover_still_raises_on_a_real_fault(unit: MockModbusUnit) -> None:
+    """A device failure is not 'nothing here' — it must not be scanned past."""
+    unit.fail_read(
+        slot_for(4).base_address,
+        ServerDeviceFailureError(message="device failed"),
+        register_type="input",
+    )
+    with pytest.raises(BlockReadError):
+        await AiLogger.async_discover(unit, slots_for_port(ComPort.COM1))
+
+
+async def test_discover_reports_nothing_from_a_silent_logger(
+    mock_modbus_unit: MockModbusUnit,
+) -> None:
+    """A logger that answers nothing is a failure, not an empty site."""
+    mock_modbus_unit.fail_requests(ModbusConnectionError("device is offline"))
+    with pytest.raises(ModbusConnectionError):
+        await AiLogger.async_discover(mock_modbus_unit, [slot_for(3)])
 
 
 async def test_a_logger_without_inverters_reads_only_the_totals(

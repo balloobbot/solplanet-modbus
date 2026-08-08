@@ -16,13 +16,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from modbus_connection.model import enum, gauge, integer, repeating_group, string
+from modbus_connection.model import (
+    enum,
+    gauge,
+    int32,
+    integer,
+    repeating_group,
+    string,
+    uint32,
+)
 
 from .addressing import InverterSlot, slot_for
-from .const import NAN_E16, NAN_S16, NAN_U16
+from .const import NAN_E16, NAN_S16, NAN_S32, NAN_U16, NAN_U32
 from .enums import DeviceState, FaultState, InverterModel, PhaseType
 from .errors import error_description
-from .model import SolplanetComponent, int32, uint32
+from .model import SolplanetComponent
 
 if TYPE_CHECKING:
     from modbus_connection import ModbusUnit
@@ -67,7 +75,7 @@ class InverterInfo(SolplanetComponent):
     # UM0058 defers the codes to a "section 3.5" the released manual does not
     # contain, so the raw value is all this library can offer.
     grid_code = integer(1026, signed=False, nan=NAN_U16)
-    rated_power = uint32(1027, unit="W")
+    rated_power = uint32(1027, nan=NAN_U32, unit="W")
     master_software_version = string(1029, 7)
     slave_software_version = string(1036, 7)
     safety_version = string(1043, 7)
@@ -132,9 +140,9 @@ class InverterData(SolplanetComponent):
 
     grid_rated_voltage = gauge(1300, 0.1, signed=False, nan=NAN_U16, unit="V")
     grid_rated_frequency = gauge(1301, 0.01, signed=False, nan=NAN_U16, unit="Hz")
-    energy_today = uint32(1302, scale=0.1, unit="kWh")
-    energy_total = uint32(1304, scale=0.1, unit="kWh")
-    hours_total = uint32(1306, unit="h")
+    energy_today = uint32(1302, scale=0.1, nan=NAN_U32, unit="kWh")
+    energy_total = uint32(1304, scale=0.1, nan=NAN_U32, unit="kWh")
+    hours_total = uint32(1306, nan=NAN_U32, unit="h")
     state = enum(1308, DeviceState, nan=NAN_E16)
     connect_time = integer(1309, signed=False, nan=NAN_U16, unit="s")
 
@@ -160,9 +168,9 @@ class InverterData(SolplanetComponent):
     st_line_voltage = gauge(1366, 0.1, signed=False, nan=NAN_U16, unit="V")
     grid_frequency = gauge(1367, 0.01, signed=False, nan=NAN_U16, unit="Hz")
 
-    apparent_power = uint32(1368, unit="VA")
-    active_power = int32(1370, unit="W")
-    reactive_power = int32(1372, unit="var")
+    apparent_power = uint32(1368, nan=NAN_U32, unit="VA")
+    active_power = int32(1370, nan=NAN_S32, unit="W")
+    reactive_power = int32(1372, nan=NAN_S32, unit="var")
     power_factor = gauge(1374, 0.01, nan=NAN_S16)
 
     fault_state = enum(1376, FaultState, nan=NAN_E16)

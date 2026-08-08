@@ -11,7 +11,7 @@ import importlib.util
 from pathlib import Path
 
 import pytest
-from modbus_connection import ModbusConnectionError, ModbusExceptionError
+from modbus_connection import ModbusConnectionError, ServerDeviceFailureError
 from modbus_connection.mock import MockModbusConnection
 
 from solplanet_modbus import AILOGGER_UNIT_ID, DEFAULT_PORT
@@ -92,7 +92,9 @@ async def test_run_prints_every_section(
     assert "Inverter 51 — measurements" in out
     assert "QA10010022920081" in out
     assert "Site totals" in out
-    assert "Weather sensor 2" in out
+    # The station renders both its sensors as sub-blocks.
+    assert "Weather station" in out
+    assert "sensors[2]" in out
     assert "Energy meter" in out
     assert "Modbus reads)" in out
 
@@ -158,7 +160,7 @@ async def test_run_reports_a_failed_read(
     connection = _mock_connection()
     connection.for_unit(AILOGGER_UNIT_ID).fail_read(
         1000,
-        ModbusExceptionError(4, "slave device failure"),
+        ServerDeviceFailureError(message="slave device failure"),
         register_type="input",
     )
     _serve(monkeypatch, connection)

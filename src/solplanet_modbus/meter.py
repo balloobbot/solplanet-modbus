@@ -9,9 +9,10 @@ without a meter can drop it and keep them.
 
 from __future__ import annotations
 
-from modbus_connection.model import float32
+from modbus_connection.model import float32, int32
 
-from .model import SolplanetComponent, int32
+from .const import NAN_S32
+from .model import SolplanetComponent
 
 
 class SystemPower(SolplanetComponent):
@@ -19,8 +20,8 @@ class SystemPower(SolplanetComponent):
 
     register_ranges = ((36100, 36103),)
 
-    active_power = int32(36100, unit="W")
-    reactive_power = int32(36102, unit="var")
+    active_power = int32(36100, nan=NAN_S32, unit="W")
+    reactive_power = int32(36102, nan=NAN_S32, unit="var")
 
 
 class EnergyMeter(SolplanetComponent):

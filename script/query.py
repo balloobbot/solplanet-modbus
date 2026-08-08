@@ -122,9 +122,9 @@ def _print(logger: AiLogger) -> None:
     print()
     print_component(logger.system, title="Site totals")
     if logger.weather is not None:
-        for number, sensor in enumerate(logger.weather.sensors, start=1):
-            print()
-            print_component(sensor, title=f"Weather sensor {number}")
+        print()
+        # print_component renders the station's two sensors as sub-blocks.
+        print_component(logger.weather, title="Weather station")
     if logger.meter is not None:
         print()
         print_component(logger.meter, title="Energy meter")
