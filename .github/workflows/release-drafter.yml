@@ -82,7 +82,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.target }}
-        run: gh release upload "$TAG" dist/*
+        # --clobber because the delete above works by release id while this
+        # resolves by tag: if the repository ever holds two drafts on the same
+        # tag they are different releases, and the upload would collide.
+        run: gh release upload --clobber "$TAG" dist/*
       - name: Mark draft ready by removing the upload warning
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
