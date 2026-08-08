@@ -6,7 +6,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from modbus_connection import ExceptionCode, ModbusExceptionError
+from modbus_connection import IllegalDataAddressError
 from modbus_connection.model import Component, ComponentGroup
 
 from .addressing import InverterSlot, all_slots, slot_for
@@ -131,14 +131,8 @@ class AiLogger:
             info = InverterInfo(unit, base_offset=slot.base_offset)
             try:
                 await info.async_update()
-            except ModbusExceptionError as err:
-                # modbus-connection 4.3 raises the class the code names, so this
-                # could be `except IllegalDataAddressError`. Comparing the code
-                # on the base class means the same thing and also works on 4.2,
-                # which raises a BlockReadError carrying it.
-                if err.exception_code == ExceptionCode.ILLEGAL_DATA_ADDRESS:
-                    continue
-                raise
+            except IllegalDataAddressError:
+                continue
             if info.modbus_address != slot.modbus_id:
                 continue
             found.append(
