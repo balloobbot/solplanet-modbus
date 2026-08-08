@@ -6,7 +6,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from modbus_connection import BlockReadError, ExceptionCode
+from modbus_connection import ExceptionCode, ModbusExceptionError
 from modbus_connection.model import Component, ComponentGroup
 
 from .addressing import InverterSlot, all_slots, slot_for
@@ -90,7 +90,7 @@ class AiLogger:
     async def async_update(self) -> None:
         """Refresh every inverter's measurements and the site totals.
 
-        Raises ``BlockReadError`` if the logger rejects a block.
+        Raises ``ModbusExceptionError`` if the logger rejects a block.
         """
         await self._group.async_update()
 
@@ -124,14 +124,18 @@ class AiLogger:
         A window the logger answers with "illegal data address" is skipped: it
         does not serve that part of the map, which is the same news as an empty
         window and should not abandon the rest of the scan. Any other rejection
-        is a real fault and raises ``BlockReadError``.
+        is a real fault and raises ``ModbusExceptionError``.
         """
         found = []
         for slot in all_slots() if slots is None else slots:
             info = InverterInfo(unit, base_offset=slot.base_offset)
             try:
                 await info.async_update()
-            except BlockReadError as err:
+            except ModbusExceptionError as err:
+                # modbus-connection 4.3 raises the class the code names, so this
+                # could be `except IllegalDataAddressError`. Comparing the code
+                # on the base class means the same thing and also works on 4.2,
+                # which raises a BlockReadError carrying it.
                 if err.exception_code == ExceptionCode.ILLEGAL_DATA_ADDRESS:
                     continue
                 raise

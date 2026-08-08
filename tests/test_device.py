@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 from modbus_connection import (
-    BlockReadError,
     IllegalDataAddressError,
     ModbusConnectionError,
+    ModbusExceptionError,
     ServerDeviceFailureError,
 )
 from modbus_connection.mock import MockModbusUnit
@@ -274,7 +274,9 @@ async def test_discover_still_raises_on_a_real_fault(unit: MockModbusUnit) -> No
         ServerDeviceFailureError(message="device failed"),
         register_type="input",
     )
-    with pytest.raises(BlockReadError):
+    # 4.3 raises ServerDeviceFailureError here and 4.2 a BlockReadError;
+    # both are this, which is what the caller actually needs to know.
+    with pytest.raises(ModbusExceptionError):
         await AiLogger.async_discover(unit, slots_for_port(ComPort.COM1))
 
 
